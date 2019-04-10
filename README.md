@@ -1,15 +1,13 @@
 # PolymorphicJoin
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/polymorphic_join`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Rails does not include a polymorphic join by default but this gem would help you to joins your polymorphic relationship with ease.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'polymorphic_join'
+gem 'polymorphic_join', '~> 1.0.1'
 ```
 
 And then execute:
@@ -30,7 +28,8 @@ include PolymorphicJoin
 
 Then you can use the polymorphic join like followings:
 
-Assuming I have this model call `Notification`
+Given that I have this model call `Notification`
+
 ```rb
 class Notification < ApplicationRecord
   belongs_to :notifiable, polymorphic: true
