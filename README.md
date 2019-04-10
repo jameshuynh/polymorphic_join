@@ -7,7 +7,7 @@ Rails does not include a polymorphic join by default but this gem would help you
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'polymorphic_join', '~> 1.0.1'
+gem 'polymorphic_join', '~> 0.1.0'
 ```
 
 And then execute:
