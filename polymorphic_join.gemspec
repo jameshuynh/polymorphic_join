@@ -8,11 +8,11 @@ Gem::Specification.new do |spec|
   spec.name          = 'polymorphic_join'
   spec.version       = PolymorphicJoin::VERSION
   spec.authors       = ['James Huynh']
-  spec.email         = ['james@rubify.com']
+  spec.email         = ['jameshuynhsg@gmail.com']
 
   spec.summary       = 'This gem is used to do polymorphic join'
   spec.description   = 'This gem is used to do polymorphic join'
-  spec.homepage      = 'https://rubify.com'
+  spec.homepage      = 'https://github.com/jameshuynh/polymorphic_join'
   spec.license       = 'MIT'
 
   if spec.respond_to?(:metadata)
