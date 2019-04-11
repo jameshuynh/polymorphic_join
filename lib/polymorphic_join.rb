@@ -10,6 +10,9 @@ module PolymorphicJoin
   end
 
   module ClassMethods
+
+    private
+
     def polymorphic_union_scope(types, *scopes)
       union = scopes[0]
       t2 = arel_table
@@ -24,11 +27,17 @@ module PolymorphicJoin
       from(t2.create_join(t1, t2.create_on(t1[:id].eq(t2[:id]))))
     end
 
-    private
+    def retrieve_all_polymorphic_types(type)
+      pluck("#{type}_type").collect { |x| x.underscore.tableize.to_sym }
+    end
 
     def add_ref_polymorphic_scope
-      scope :ref_polymorphic, lambda { |type, refs|
-        polymorphic = refs
+      scope :ref_polymorphic, lambda { |type, refs = nil|
+        polymorphic = if refs.nil?
+                        retrieve_all_polymorphic_types(type)
+                      else
+                        refs
+                      end
         columns = polymorphic.first.to_s.classify.constantize.column_names
         polymorphic.each do |p|
           columns &= p.to_s.classify.constantize.column_names
@@ -43,7 +52,7 @@ module PolymorphicJoin
         end
 
         table = arel_table
-        joins_statements = refs.map do |join_type|
+        joins_statements = polymorphic.map do |join_type|
           join_table =
             join_type.to_s.classify.constantize.arel_table.alias(types)
           arel_table
