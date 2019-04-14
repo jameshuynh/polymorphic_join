@@ -28,7 +28,9 @@ module PolymorphicJoin
     end
 
     def retrieve_all_polymorphic_types(type)
-      pluck("#{type}_type").collect { |x| x.underscore.tableize.to_sym }
+      distinct.pluck("#{type}_type").collect do |x| 
+        x.underscore.tableize.to_sym
+      end
     end
 
     def add_ref_polymorphic_scope
