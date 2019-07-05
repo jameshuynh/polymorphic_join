@@ -57,6 +57,23 @@ Notification
   .order('notifiables.common_attribute ASC')
 ```
 
+Or if you want to map back certain column
+
+```rb
+Notification
+  .ref_polymorphic(
+    :notifiable,
+    [
+      :comments,
+      {
+        uploads: { title: 'content' }
+      }
+    ]
+  )
+  .where('notifiables.common_attribute' => 'test')
+  .order('notifiables.common_attribute ASC')
+```
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

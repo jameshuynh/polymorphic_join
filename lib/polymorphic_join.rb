@@ -1,4 +1,4 @@
-# rubocop:disable BlockLength, AbcSize, Style/Documentation, MethodLength
+# rubocop:disable MethodLength, AbcSize
 # frozen_string_literal: true
 
 require 'polymorphic_join/version'
@@ -10,8 +10,73 @@ module PolymorphicJoin
   end
 
   module ClassMethods
+    def query_ref_polymorphic(type, refs)
+      polymorphic = if refs.nil?
+                      {
+                        refs: retrieve_all_polymorphic_types(type),
+                        map_columns: {}
+                      }
+                    else
+                      process_input_refs(refs)
+                    end
 
-    private
+      columns =
+        polymorphic[:refs]
+        .first
+        .to_s
+        .classify
+        .constantize
+        .column_names
+
+      polymorphic[:refs].each do |p|
+        columns &= p.to_s.classify.constantize.column_names
+      end
+
+      polymorphic[:map_columns].values.each do |value|
+        columns += value.values
+      end
+
+      columns.uniq!
+
+      selectable_columns = {}
+      types = type.to_s.pluralize
+      polymorphic[:refs].each do |p|
+        map_columns = polymorphic[:map_columns][p] || {}
+        selectable_columns[p] = []
+
+        p.to_s.classify.constantize.column_names.each do |column_name|
+          if (alias_name = map_columns[column_name.to_sym]).present?
+            selectable_columns[p] <<
+              "#{types}.#{column_name} AS #{alias_name}"
+          elsif columns.index(column_name)
+            selectable_columns[p] <<
+              "#{types}.#{column_name}"
+          end
+        end
+      end
+
+      table = arel_table
+      joins_statements = polymorphic[:refs].map do |join_type|
+        join_table =
+          join_type.to_s.classify.constantize.arel_table.alias(types)
+        arel_table
+          .project(*(selectable_columns[join_type]))
+          .join(
+            join_table, Arel::Nodes::InnerJoin
+          )
+          .on(
+            table["#{type}_type".to_sym]
+            .eq(join_type.to_s.classify)
+            .and(
+              table["#{type}_id".to_sym].eq(join_table[:id])
+            )
+          )
+      end
+
+      polymorphic_union_scope(types, *joins_statements)
+    end
+
+    protected
 
     def polymorphic_union_scope(types, *scopes)
       union = scopes[0]
@@ -28,52 +93,35 @@ module PolymorphicJoin
     end
 
     def retrieve_all_polymorphic_types(type)
-      distinct.pluck("#{type}_type").collect do |x| 
+      distinct.pluck("#{type}_type").collect do |x|
         x.underscore.tableize.to_sym
       end
     end
 
+    def process_input_refs(refs)
+      poly_refs = []
+      refs.each do |ref|
+        poly_refs << (ref.is_a?(Symbol) ? ref : ref.keys.first)
+      end
+
+      puts refs.inspect
+      {
+        refs: poly_refs,
+        map_columns: refs.each_with_object({}) do |el, hash|
+          if el.is_a?(Symbol)
+            hash[el] = {}
+          else
+            hash[el.keys.first] = el[el.keys.first]
+          end
+        end
+      }
+    end
+
     def add_ref_polymorphic_scope
       scope :ref_polymorphic, lambda { |type, refs = nil|
-        polymorphic = if refs.nil?
-                        retrieve_all_polymorphic_types(type)
-                      else
-                        refs
-                      end
-        columns = polymorphic.first.to_s.classify.constantize.column_names
-        polymorphic.each do |p|
-          columns &= p.to_s.classify.constantize.column_names
-        end
-
-        types = type.to_s.pluralize
-
-        columns -= column_names
-        selectable_columns = []
-        columns.each do |column|
-          selectable_columns << "#{types}.#{column}"
-        end
-
-        table = arel_table
-        joins_statements = polymorphic.map do |join_type|
-          join_table =
-            join_type.to_s.classify.constantize.arel_table.alias(types)
-          arel_table
-            .project(table[Arel.star], *selectable_columns)
-            .join(
-              join_table, Arel::Nodes::InnerJoin
-            )
-            .on(
-              table["#{type}_type".to_sym]
-              .eq(join_type.to_s.classify)
-              .and(
-                table["#{type}_id".to_sym].eq(join_table[:id])
-              )
-            )
-        end
-
-        polymorphic_union_scope(types, *joins_statements)
+        query_ref_polymorphic(type, refs)
       }
     end
   end
 end
-# rubocop:enable all
+# rubocop:disable all
