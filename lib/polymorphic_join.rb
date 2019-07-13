@@ -1,4 +1,4 @@
-# rubocop:disable MethodLength, AbcSize
+# rubocop:disable MethodLength, AbcSize, ModuleLength
 # frozen_string_literal: true
 
 require 'polymorphic_join/version'
@@ -73,12 +73,14 @@ module PolymorphicJoin
           )
       end
 
-      polymorphic_union_scope(types, *joins_statements)
+      polymorphic_union_scope(
+        type, polymorphic[:refs], *joins_statements
+      )
     end
 
     protected
 
-    def polymorphic_union_scope(types, *scopes)
+    def polymorphic_union_scope(type, refs, *scopes)
       union = scopes[0]
       t2 = arel_table
 
@@ -88,8 +90,20 @@ module PolymorphicJoin
         end
       end
 
+      types = type.to_s.pluralize
       t1 = arel_table.create_table_alias(union, types)
-      from(t2.create_join(t1, t2.create_on(t1[:id].eq(t2[:id]))))
+      from(
+        t2.create_join(
+          t1,
+          t2.create_on(
+            t1[:id].eq(t2["#{type}_id".to_sym]).and(
+              t2["#{type}_type"].in(
+                refs.collect { |x| x.to_s.singularize.classify }
+              )
+            )
+          )
+        )
+      ).distinct
     end
 
     def retrieve_all_polymorphic_types(type)
@@ -104,7 +118,6 @@ module PolymorphicJoin
         poly_refs << (ref.is_a?(Symbol) ? ref : ref.keys.first)
       end
 
-      puts refs.inspect
       {
         refs: poly_refs,
         map_columns: refs.each_with_object({}) do |el, hash|
