@@ -80,16 +80,19 @@ module PolymorphicJoin
 
     protected
 
+    def build_union(left, right)
+      if right.length > 1
+        Arel::Nodes::Union.new(left, build_union(right[0], right[1..-1]))
+      else
+        Arel::Nodes::Union.new(left, right[0])
+      end
+    end
+
     def polymorphic_union_scope(type, refs, *scopes)
       union = scopes[0]
       t2 = arel_table
 
-      if scopes.length > 1
-        (1..(scopes.length - 1)).each do |i|
-          union = union.union(scopes[i])
-        end
-      end
-
+      union = build_union(scopes[0], scopes[1..-1]) if scopes.length > 1
       types = type.to_s.pluralize
       t1 = arel_table.create_table_alias(union, types)
       from(
